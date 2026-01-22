@@ -46,10 +46,16 @@ Assim, foi testado um arranjo de 3 capacitores em paralelo com cada sendo 220 mi
 
 - Também, foi visto que para load-aware control foi necessário de 2 relés de estado sólidos (SSRs) para ligar e desligar o cooler e lâmpada pelo machine learning usando decision tree. A árvore de decisão iria controlar os SSRs enviando sinais de ativação e desativação baseado na corrente e potência.
 
-- Não foi necessário o 
+- Não foi necessário a função de Motor_On, pois isso é redundante e causa menor legibilidade ao código.
 
 # Code
-- 
+- Primeiramente são definidos as pinagens do sensor e dos SSRs. Também é medido os valores dos offsets baseados nas medições da entrada analógica e calculado o offset que é os ruídos das medições do sensor.
+A função de leitura de corrente detecta o sinal analógico adc da entrada do pino 34 do ESP32, cria a tensão adc baseado nas referências e especificações do sensor. Também, inicializa o valor da corrente instantênea baseado nas referências. Logo adiante, é detectado o inrush current enviado pelo motor analisando a janela de 14700 micro segundos avaliando o valor absoluto da corrente instantênea com o pico de corrente.
 
+...
+
+Ademais, na função de atualização do root mean square é feito com uma mostra de frequência de 500 Hz usando a fórmula: raiz quadrada do quadrado da corrente instantânea pelo número de tentativas.
+Além disso, a função de regime permanente atualiza o erro baseado no último valor de o root mean square da corrente e verifica se o erro estar numa janela de estabilidade condizente com o Stable_Thresh variable.
+No final é feito a chamada de todas as funções do sistema.
 
 # Conclusion

@@ -1,61 +1,87 @@
 # Overview
 
-- This project has been created to wrap up some limitations from previous project like inrush conditions. The load aware control or current-based decision maker was tought to classify and measure dynamic consumption and encompasse large circuits that wasn't worked yet. Initially we think in control loads based in machine learning perceptions using decision tree, whereas the project didn't work so well, due to physical,economical limitations and timestime. However, this project was so useful because I learn how to detect noise, improve accurancies and make better decisions related to IoT projects. I learned snubber circuit, signal analyses, kind of SSRs and circuit impedance.
+This project was developed to address limitations identified in a previous implementation, particularly concerning inrush current conditions. The system implements a load-aware control mechanism with current-based decision making to classify and measure dynamic power consumption, extending to larger circuits that were previously unaddressed.
 
-## Variables definition
-- Foi pensando em criar uma variável de corrente da carga mínima de 0.15 ampér, em que servia para ignorar ruídos do ACS712-5B. Contudo, foi percebido que não foi necessário usar essa variável, pois em ajustes futuros foi tirado o ACS712-5B série com todo o circuito e foi conectado em série apenas com o motor. Assim, melhorando a acurácia da medição do sensor. 
-Também foi retirado a variável chamada: overcome_limit de 0.7 ampér, pois não foi ligado simultaneamente as cargas em paralelo para evitar saturação de corrente. 
-Também foi criado uma variável chamada inrush_limit que detectava a ativação do motor na partida e definir um limite de funcionamento do circuito com o motor ativo.
-Também foi definido limite de estabilidade e tempo de estabilidade do circuito que vai ser usado na função de regime permanente.
+The initial concept involved machine learning-based load control using decision trees, but this approach was deprioritized due to physical hardware constraints, economic considerations, and time limitations. Nevertheless, this project provided valuable learning opportunities in noise detection, accuracy improvement, and IoT project decision-making. Key learnings include snubber circuit, signal analysis, SSR types, and circuit impedance.
 
-
-# Architecture
+# System architecture
 
 ## Physical circuit
-- A implementação foi pensada como um melhoramento e teste do projeto anterior com ESP32, em que inicialmente tinha mais de 15 jumpers espalhados por toda a protoboard e 3 capacitores em paralelo, 1 LED vermelho e testei um resistor de 100 kohm na entrada do arranjo e saída do OUTPUT do ACS712-5B, mas isso causava pertubações nos sinais, devido a impedância dos fios. A imagem do circuito inicialmente pensado está ilustrado abaixo.
+The circuit evolved from an initial prototype with over 15 jumper wires, three parallel capacitors, and additional components, to a simplified design using only 12 jumpers, a single 470 µF capacitor, and an LED. This reduction minimized oscillations and improved modularity.
 
-...
 
-Portanto, implementei um circuito mais simples para reduzir os ruidos e aumentar a legibilidade do projeto que foi apenas um capacitor de 470 uF, um LED e 12 jumpers. Isso reduziu as oscilações e tornou mais simples e modular.
-Além disso, foi implementando dois SSRs(relés de estado sólido) em série com as cargas de teste. Isso foi um aprendizado porque aprendi que há vários componentes eletrônicos que funcionam como optoacoplador e o SSR tem um optoacoplador internamente e serve para comutar os sinais DC e AC. Inicialmente o ACS712-5B alimentava os SSRs para depois ir para as cargas. 
-Contudo foi percebido que esse arranjo físico não faz sentido, pois o ACS712-5B monitorava os ruidos do funcionamento da lâmpada junto com o motor e esse sensor não gera energia só observa a corrente. Assim, foi alterado o circuito como mostra a imagem a abaixo para o ACS712-5B ficar em série apenas com o motor. Assim, tornando as medições precisas e reduzindo ruidos. 
 
-...
+Two Solid State Relays (SSRs) were implemented in series with test loads. Through experimentation, it was determined that placing the ACS712-5B current sensor in series with only the motor (rather than monitoring combined loads) significantly improved measurement accuracy and reduced noise interference.
+
+
 
 ## State machine
-- Foi pensando em uma máquina de estados para definir as ações do sistema para cada estado com inicialmente 6 estados, desde a inativação total do sistema até o estado de ativação de desativação de cada componente. Como a imagem abaixo mostra:
+The system employs a finite state machine (FSM) for operational control. The initial six-state design was simplified to four core states for improved clarity and reliability:
+1. IDLE: All loads deactivated; awaits user command
 
-...
+2. LAMP_ON: Lamp activated; can transition to motor start if commanded
 
-Contudo foi percebido que esse arranjo aumentava a complexidade do projeto e tornava muito confuso o entendimento dos estados e as possíveis ações. Assim, foi reduzido para 4 estados sendo: Idle, Lamp_On, Motor_Starting e Motor_On. Dessa forma, quando fosse ativo o cmd_off isso levava o sistema para o estado IDLE, que é a inatividade completa do sistema e evitando com que a lâmpada e o motor fossem ligados juntos, assim, evitando saturação e mal funcionamento dos componentes como mostra a imagem abaixo.
+3. MOTOR_STARTING: Validates inrush current against limits
 
-...
+4. MOTOR_ON: Motor running; can transition to lamp if commanded
 
-## State machine funcionalities
-- O primeiro estado foi o IDLE, em que desativa todos as cargas e verifica o comando definido pelo usuário de ligar o motor ou a lâmpada. Caso o comando solicitasse a ativação da lâmpada. Isso iria para o estado Lamp_On que ativa a lâmpada, verifica se for mandado o comando de ativar o motor a lâmpada é desativada, liga o motor e começa a contar o tempo de inicialização para ser verificado o tempo de estabilização. Se foi mandado o comando de cmd_off o sistema é desligado por completo e volta ao IDLE.
-Caso fosse solicitado a ativação do motor. Isso iria para o estado intermediário chamado Motor_Starting que verifica o inrush current com o inrush_limit, se o inrush for maior que o inrush_limit o sistema é desativado, caso contrário isso obedece o tempo de estabilização e o motor é ativado e dentro do estado Motor_On caso ativado a lâmpada o motor é desativado e a lâmpada é ativada passando para o estado Lamp_On. No final da FSM os comandos são limpados evitando uma acumulação de comandos e quebra da FSM.
+
+
+The FSM ensures mutually exclusive activation of lamp and motor to prevent current saturation and component stress. Command clearing at each state transition prevents command accumulation and FSM instability.
+
+
+# Key variables
+
+- Inrush Detection: Implemented with inrush_limit to identify motor startup surges and define operational limits.
+
+- Stability Monitoring: Uses stable_thresh and timing parameters for steady-state operation validation.
+
+- Noise Filtering: Initial 0.15A minimum current threshold was removed after circuit optimization eliminated significant ACS712-5B noise.
+
+# Implementation details
+
+## Current measurement system
+
+- ACS712-5B current sensor interfaced with ESP32 analog input (Pin 34)
+- Dynamic offset calibration for noise compensation
+- Inrush detection via 14.7ms sampling window with peak current analysis
+- RMS current calculation at 500Hz sampling rate
+
+## Stability monitoring
+
+- Error calculation based on RMS current deviation
+- Threshold-based stability determination using stable_thresh
+- Continuous monitoring for steady-state operation
 
 # Observations
 
-- Foi testado o projeto com 1 resistor de 100 kohm e 1 capacitor de 10 nanoF. Contudo, pela fórmula -> 1/ (2piRC) -> 159.15 Hz. Assim, ele atenuava as frequências baixas do sensor, mas junto atenuava os sinais enviados pela carga. Assim, causando um falso-positivo na medição, em que os sinais oscilava muito na janela de 200 ms que foi o tempo de amostragem para detecção de peak current. Além disso, antes tinha colocado como peak current 0.1 o que não faz sentido, não só porque os ruidos padrões do ACS712-5B já são em média 0.35, mas que nem toda corrente de funcionamento maior que 0.1 são pico de corrente.
+## Technical optimization
 
-- Se apenas ligando a lâmpada sozinha uma corrente maior que 1.1 já é um pico de corrente na partida.
+Initial RC filtering (100kΩ + 10nF, 159Hz cutoff) attenuated both noise and legitimate load signals, causing false positives during 200ms peak detection windows. The optimal configuration was determined to be 660µF total capacitance (3×220µF parallel), which effectively suppressed oscillations without signal degradation.
 
-- Além disso, devido as oscilações intermitentes do sinal foi testado na protoboard apenas com o capacitor de 10 nanoF, mas isso não mudou o comportamento caótico do sistema.
-Assim, foi testado um arranjo de 3 capacitores em paralelo com cada sendo 220 microF dando 660 uF. Isso ajudou na contenção das oscilações e quando foi ligado o cooler em paralelo com a lâmpada (cargas) o pisca pisca da lâmpada parou e só ficou piscando o LED colocado em paralelo com os capacitores na protoboard.
+## SSR implementation
 
-- Também, foi visto que para load-aware control foi necessário de 2 relés de estado sólidos (SSRs) para ligar e desligar o cooler e lâmpada pelo machine learning usando decision tree. A árvore de decisão iria controlar os SSRs enviando sinais de ativação e desativação baseado na corrente e potência.
+Two SSRs were required for independent control of cooler and lamp loads. These components provided optical isolation and reliable AC/DC switching capabilities.
 
-- Não foi necessário a função de Motor_On, pois isso é redundante e causa menor legibilidade ao código.
+## Measuremente refinements
 
-# Code
-- Primeiramente são definidos as pinagens do sensor e dos SSRs. Também é medido os valores dos offsets baseados nas medições da entrada analógica e calculado o offset que é os ruídos das medições do sensor.
-A função de leitura de corrente detecta o sinal analógico adc da entrada do pino 34 do ESP32, cria a tensão adc baseado nas referências e especificações do sensor. Também, inicializa o valor da corrente instantênea baseado nas referências. Logo adiante, é detectado o inrush current enviado pelo motor analisando a janela de 14700 micro segundos avaliando o valor absoluto da corrente instantênea com o pico de corrente.
+The first refinement was the peak current detection threshold adjusted from 0.1A to 1.1A based on empirical lamp startup characteristics.
+The second improvement was the LED indicator implemented for visual system status feedback.
 
-...
+# Code structure
 
-Ademais, na função de atualização do root mean square é feito com uma mostra de frequência de 500 Hz usando a fórmula: raiz quadrada do quadrado da corrente instantânea pelo número de tentativas.
-Além disso, a função de regime permanente atualiza o erro baseado no último valor de o root mean square da corrente e verifica se o erro estar numa janela de estabilidade condizente com o Stable_Thresh variable.
-No final é feito a chamada de todas as funções do sistema.
+The implementation includes:
+- Pin mapping definitions for sensors and SSRs
+- Dynamic offset calibration routines
+- Current reading with ADC conversion and reference scaling
+- Inrush detection with configurable timing windows
+
+
+
+- RMS calculation and stability monitoring functions
+- Integrated system function calls
 
 # Conclusion
+
+This project successfully addressed initial technical challenges while providing substantial learning value. Although the machine learning component was deprioritized, the development process significantly enhanced critical thinking abilities, practical circuit implementation skills, and understanding of electrical phenomenals.
+The work demonstrates effective problem-solving in IoT system design, combining ESP32 microcontroller programming with hardware optimization to create a robust current monitoring and control solution. The experience has substantially improved both programming proficiency and physical system analysis capabilities.

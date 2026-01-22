@@ -24,7 +24,7 @@ The system employs a finite state machine (FSM) for operational control. The ini
 
 4. MOTOR_ON: Motor running; can transition to lamp if commanded
 
-[state_machine_project.pdf](https://github.com/user-attachments/files/24795252/state_machine_project.pdf)
+<img width="2268" height="1512" alt="state_machine_project" src="https://github.com/user-attachments/assets/bc64e136-35be-49fa-be9f-bec64108009c" />
 
 
 The FSM ensures mutually exclusive activation of lamp and motor to prevent current saturation and component stress. Command clearing at each state transition prevents command accumulation and FSM instability.

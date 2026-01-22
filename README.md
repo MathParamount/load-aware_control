@@ -85,6 +85,9 @@ The implementation includes:
 - RMS calculation and stability monitoring functions
 - Integrated system function calls
 
+<img width="831" height="327" alt="loop" src="https://github.com/user-attachments/assets/18cd46d5-3f30-4efb-aed3-7dcae4670608" />
+
+
 # Conclusion
 
 This project successfully addressed initial technical challenges while providing substantial learning value. Although the machine learning component was deprioritized, the development process significantly enhanced critical thinking abilities, practical circuit implementation skills, and understanding of electrical phenomenals.

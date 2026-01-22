@@ -7,13 +7,12 @@ The initial concept involved machine learning-based load control using decision 
 # System architecture
 
 ## Physical circuit
-The circuit evolved from an initial prototype with over 15 jumper wires, three parallel capacitors, and additional components, to a simplified design using only 12 jumpers, a single 470 µF capacitor, and an LED. This reduction minimized oscillations and improved modularity.
+The circuit evolved from an initial prototype with over 15 jumper wires, three parallel capacitors, and additional components, to a simplified design using only 12 jumpers, a single 470 µF capacitor, and an LED. This reduction minimized oscillations and improved modularity. The image below shows the initial circuit implementation.
 
+![circuit1](https://github.com/user-attachments/assets/75ad59d9-dd8d-4524-b632-9d516d7e35da)
 
 
 Two Solid State Relays (SSRs) were implemented in series with test loads. Through experimentation, it was determined that placing the ACS712-5B current sensor in series with only the motor (rather than monitoring combined loads) significantly improved measurement accuracy and reduced noise interference.
-
-
 
 ## State machine
 The system employs a finite state machine (FSM) for operational control. The initial six-state design was simplified to four core states for improved clarity and reliability:
@@ -25,6 +24,7 @@ The system employs a finite state machine (FSM) for operational control. The ini
 
 4. MOTOR_ON: Motor running; can transition to lamp if commanded
 
+[state_machine_project.pdf](https://github.com/user-attachments/files/24795252/state_machine_project.pdf)
 
 
 The FSM ensures mutually exclusive activation of lamp and motor to prevent current saturation and component stress. Command clearing at each state transition prevents command accumulation and FSM instability.
@@ -59,6 +59,9 @@ The FSM ensures mutually exclusive activation of lamp and motor to prevent curre
 
 Initial RC filtering (100kΩ + 10nF, 159Hz cutoff) attenuated both noise and legitimate load signals, causing false positives during 200ms peak detection windows. The optimal configuration was determined to be 660µF total capacitance (3×220µF parallel), which effectively suppressed oscillations without signal degradation.
 
+![circuit_2](https://github.com/user-attachments/assets/92a98b4d-d17d-4887-bb82-62d2e6058d89)
+
+
 ## SSR implementation
 
 Two SSRs were required for independent control of cooler and lamp loads. These components provided optical isolation and reliable AC/DC switching capabilities.
@@ -76,6 +79,7 @@ The implementation includes:
 - Current reading with ADC conversion and reference scaling
 - Inrush detection with configurable timing windows
 
+<img width="839" height="479" alt="update_inrush" src="https://github.com/user-attachments/assets/cdf8a9bc-498c-4d6f-97da-8a97bba1b22c" />
 
 
 - RMS calculation and stability monitoring functions
